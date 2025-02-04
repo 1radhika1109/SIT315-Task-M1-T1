@@ -1,0 +1,23 @@
+const int pirSensorPin = 2;  // PIR sensor connected to digital pin 2
+const int buzzerPin = 7;      // Buzzer connected to digital pin 7
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(pirSensorPin, INPUT);   
+  pinMode(buzzerPin, OUTPUT);      
+}
+
+void loop() {
+  int sensorValue = digitalRead(pirSensorPin);
+  Serial.print("PIR Sensor Value: ");
+  Serial.println(sensorValue);
+
+  if (sensorValue == HIGH) {
+    digitalWrite(buzzerPin, HIGH);  
+    Serial.println("Motion detected! Buzzer ON");
+  } else {
+    digitalWrite(buzzerPin, LOW);   
+    Serial.println("No motion detected. Buzzer OFF");
+  }
+
+  delay(1000);

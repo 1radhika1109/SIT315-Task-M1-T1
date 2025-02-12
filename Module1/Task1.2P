@@ -1,0 +1,35 @@
+const int pirSensorPin = 2;  // PIR sensor connected to digital pin 2
+const int buzzerPin = 7;     // Buzzer connected to digital pin 7
+
+volatile int motionState = LOW;  // Tracks PIR sensor state
+unsigned long previousLogTime = 0;
+const long logInterval = 1000;   // Log every 1 second
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(pirSensorPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  // Attach interrupt to PIR sensor pin on CHANGE 
+  attachInterrupt(digitalPinToInterrupt(pirSensorPin), motionISR, CHANGE);
+}
+
+// Interrupt Service Routine (ISR) for PIR sensor state change
+void motionISR() {
+  motionState = digitalRead(pirSensorPin);  // Read current state
+  digitalWrite(buzzerPin, motionState);     // Update buzzer immediately
+}
+
+void loop() {
+  unsigned long currentTime = millis();
+  // Log sensor state every logInterval milliseconds
+  if (currentTime - previousLogTime >= logInterval) {
+    previousLogTime = currentTime;
+    Serial.print("PIR Sensor Value: ");
+    Serial.println(motionState);
+    if (motionState == HIGH) {
+      Serial.println("Motion detected! Buzzer ON");
+    } else {
+      Serial.println("No motion detected. Buzzer OFF");
+    }
+  }
+}

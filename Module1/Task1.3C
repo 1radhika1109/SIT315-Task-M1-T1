@@ -1,0 +1,48 @@
+const int motionPin = 2;   // Motion sensor connected to pin 2
+const int buzzerPin = 7;   // Buzzer connected to pin 7
+const int tiltSensor = 3;  // Tilt sensor connected to pin 3
+int ledPin = 13;           // LED connected to pin 13
+
+volatile uint8_t motionFlag = LOW;  // Stores motion state
+volatile uint8_t tiltFlag = LOW;    // Stores tilt state
+
+void setup() {  
+  pinMode(buzzerPin, OUTPUT);  
+  pinMode(ledPin, OUTPUT);  
+  pinMode(tiltSensor, INPUT_PULLUP);  
+  pinMode(motionPin, INPUT);  
+  
+  Serial.begin(9600);  // Start serial communication
+
+  // Attach interrupts to detect changes in motion and tilt sensors
+  attachInterrupt(digitalPinToInterrupt(motionPin), handleMotion, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(tiltSensor), handleTilt, CHANGE);
+}
+
+void loop() {
+  delay(200);  // Small delay to reduce unnecessary processing
+}
+
+// Function to handle motion sensor changes
+void handleMotion() {
+  motionFlag = !motionFlag;  
+  digitalWrite(buzzerPin, motionFlag);  
+
+  if (motionFlag) {
+    Serial.println("Motion detected -> Buzzer ON");
+  } else {
+    Serial.println("No motion -> Buzzer OFF");
+  }
+}
+
+// Function to handle tilt sensor changes
+void handleTilt() {
+  tiltFlag = !tiltFlag;  
+  digitalWrite(ledPin, tiltFlag);  
+
+  if (tiltFlag) {
+    Serial.println("Tilt detected -> LED ON");
+  } else {
+    Serial.println("Stable -> LED OFF");
+  }
+}

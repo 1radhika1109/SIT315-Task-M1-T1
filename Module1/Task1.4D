@@ -1,1 +1,101 @@
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+// Pin Definitions
+#define PIR_SENSOR 2       // PIR Motion Sensor
+#define BUZZER 7           // Buzzer
+#define TILT_SENSOR 3      // Tilt Sensor (PCINT19 -> D3)
+#define TILT_LED 13        // LED for Tilt Sensor
+#define TEMP_SENSOR A0     // Temperature Sensor (Analog)
+#define TEMP_LED 8         // LED for Temperature Alert
+
+volatile bool tiltTriggered = false;  // Flag for tilt sensor interrupt
+volatile bool timerFlag = false;      // Flag for Timer Interrupt
+
+bool lastTiltState = HIGH;  // Stores the last tilt state
+
+void setup() {
+    Serial.begin(9600);
+
+    // PIR & Buzzer Setup
+    pinMode(PIR_SENSOR, INPUT);
+    pinMode(BUZZER, OUTPUT);
+
+    // Tilt Sensor Setup
+    pinMode(TILT_SENSOR, INPUT_PULLUP);
+    pinMode(TILT_LED, OUTPUT);
+
+    // Temperature Sensor Setup
+    pinMode(TEMP_SENSOR, INPUT);
+    pinMode(TEMP_LED, OUTPUT);
+
+    // Enable Pin Change Interrupt for Tilt Sensor (PCINT19 -> D3)
+    PCICR |= (1 << PCIE2);    // Enable PCINT2 group (D0–D7)
+    PCMSK2 |= (1 << PCINT19); // Enable PCINT19 (D3)
+    
+    // Set up Timer1 (16-bit) to trigger every 1 second
+    cli(); // Disable global interrupts
+    TCCR1A = 0;
+    TCCR1B = (1 << WGM12) | (1 << CS12); // CTC mode, Prescaler = 256
+    OCR1A = 62500;             // Compare match value for 1-second interval
+    TIMSK1 |= (1 << OCIE1A);   // Enable Timer1 Compare A interrupt
+    sei(); // Enable global interrupts
+}
+
+// ISR for Pin Change Interrupt (Tilt Sensor)
+ISR(PCINT2_vect) {
+    delay(50);  // Simple debounce
+    int tiltState = digitalRead(TILT_SENSOR);
+    
+    if (tiltState == LOW && lastTiltState == HIGH) {  
+        tiltTriggered = true;
+        Serial.println("Tilt Interrupt Triggered!");
+    }
+
+    lastTiltState = tiltState;  // Update last known tilt state
+}
+
+// ISR for Timer1 Interrupt (Every 1 second)
+ISR(TIMER1_COMPA_vect) {
+    timerFlag = true;
+}
+
+void loop() {
+    // PIR Sensor & Buzzer Logic
+    if (digitalRead(PIR_SENSOR) == HIGH) {
+        digitalWrite(BUZZER, HIGH);
+        Serial.println("Motion Detected! Buzzer ON");
+        delay(500);
+        digitalWrite(BUZZER, LOW);
+    }
+
+    // Tilt Sensor LED Logic
+    if (tiltTriggered) {
+        digitalWrite(TILT_LED, HIGH);
+        Serial.println("Tilt Detected! LED ON");
+        delay(500);
+        digitalWrite(TILT_LED, LOW);
+        tiltTriggered = false; // Reset tilt flag
+    }
+
+    // Temperature Sensor Logic (Runs Every Timer Interrupt)
+    if (timerFlag) {
+        int tempValue = analogRead(TEMP_SENSOR);
+        float voltage = tempValue * (5.0 / 1023.0);  
+        float temperature = (voltage - 0.5) * 100.0; 
+        
+        Serial.print("Temperature: ");
+        Serial.print(temperature);
+        Serial.println(" °C");
+
+        if (temperature > 30.0) {  
+            digitalWrite(TEMP_LED, HIGH);
+            Serial.println("High Temperature! LED ON");
+        } else {
+            digitalWrite(TEMP_LED, LOW);
+        }
+
+        timerFlag = false;  
+    }
+}
 
